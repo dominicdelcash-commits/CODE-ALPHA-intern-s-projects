@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediaVault Pro - Local & Web Media Hub</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              900: '#134e4a',
+              dark: '#0b132b',
+              card: '#1c2541',
+              accent: '#4834d4'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar and glassmorphism styles */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b132b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1c2541;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0d9488;
+    }
+    .glass-card {
+      background: rgba(28, 37, 65, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-nav {
+      background: rgba(11, 19, 43, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* Filter effects for Lightbox */
+    .filter-normal { filter: none; }
+    .filter-bw { filter: grayscale(100%); }
+    .filter-sepia { filter: sepia(100%); }
+    .filter-vivid { filter: saturate(200%) contrast(110%); }
+    .filter-invert { filter: invert(100%); }
+  </style>
+</head>
+<body class="bg-[#0b132b] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 glass-nav px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+        <i class="fa-solid fa-photo-film text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent leading-none">
+          MediaVault Pro
+        </h1>
+        <p class="text-xs text-slate-400 font-medium mt-1">Local Computer Scanner & Web Media Search</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center bg-[#151c33] p-1.5 rounded-xl border border-slate-700/50 shadow-inner">
+      <button id="btn-tab-local" onclick="switchMainTab('local')" 
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-hard-drive"></i>
+        <span>Local Files</span>
+        <span id="badge-local-count" class="ml-1 px-2 py-0.5 text-xs bg-slate-800 text-slate-300 rounded-full hidden">0</span>
+      </button>
+      <button id="btn-tab-web" onclick="switchMainTab('web')" 
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-brand-600 text-white shadow-md shadow-brand-600/30">
+        <i class="fa-solid fa-globe"></i>
+        <span>Web Search & Gallery</span>
+        <span id="badge-web-count" class="ml-1 px-2 py-0.5 text-xs bg-brand-900/80 text-brand-100 rounded-full">12</span>
+      </button>
+    </div>
+
+    <!-- Quick Action Controls -->
+    <div class="flex items-center gap-2.5">
+      <button onclick="openCustomUrlModal()" class="px-3 py-2 text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Add Direct Image URL">
+        <i class="fa-solid fa-link text-brand-400"></i>
+        <span class="hidden sm:inline">Add URL</span>
+      </button>
+      <button id="btn-favorites-toggle" onclick="toggleFavoritesView()" class="px-3.5 py-2 text-xs font-semibold bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 rounded-lg border border-pink-800/40 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-heart text-pink-500"></i>
+        <span>Favorites (<span id="fav-count">0</span>)</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+
+    <!-- TAB 1: LOCAL FILES & FOLDER VIEW -->
+    <section id="tab-content-local" class="hidden flex-col gap-6">
+      <!-- File Selector Dropzone -->
+      <div class="glass-card rounded-2xl p-6 border-2 border-dashed border-slate-700/80 hover:border-brand-500/60 transition-all duration-300 text-center">
+        <div class="max-w-md mx-auto flex flex-col items-center gap-3">
+          <div class="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center text-2xl mb-1">
+            <i class="fa-solid fa-folder-open"></i>
+          </div>
+          <h2 class="text-lg font-bold text-slate-100">Load Computer Images or Folders</h2>
+          <p class="text-xs text-slate-400">Select individual image files or choose a whole folder from your local drive to scan instantly in your browser.</p>
+          
+          <div class="flex flex-wrap items-center justify-center gap-3 mt-2">
+            <label class="cursor-pointer px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
+              <i class="fa-solid fa-file-image"></i>
+              <span>Select Files</span>
+              <input type="file" id="local-files-input" multiple accept="image/*" class="hidden" onchange="handleLocalFilesSelected(this.files)" />
+            </label>
+
+            <label class="cursor-pointer px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold text-sm border border-slate-700 transition flex items-center gap-2">
+              <i class="fa-solid fa-folder"></i>
+              <span>Scan Directory</span>
+              <input type="file" id="local-folder-input" webkitdirectory directory multiple class="hidden" onchange="handleLocalFilesSelected(this.files)" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Local Toolbar & Filter -->
+      <div id="local-toolbar" class="hidden flex flex-wrap items-center justify-between gap-4 glass-card p-4 rounded-xl">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-hard-drive text-brand-400"></i>
+          <span id="local-status-text" class="text-xs font-semibold text-slate-300">0 local images loaded</span>
+        </div>
+        <input type="text" id="local-filter-input" oninput="filterLocalImages()" placeholder="Filter loaded files..." class="bg-[#111827] border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 w-full sm:w-64 focus:outline-none focus:border-brand-500" />
+      </div>
+
+      <!-- Local Grid -->
+      <div id="local-image-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 2: WEB SEARCH & STREAM GALLERY -->
+    <section id="tab-content-web" class="flex flex-col gap-6">
+      
+      <!-- Search Banner -->
+      <div class="glass-card p-4 sm:p-6 rounded-2xl flex flex-col gap-4 shadow-2xl relative overflow-hidden">
+        <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <form onsubmit="handleWebSearchSubmit(event)" class="flex flex-col sm:flex-row items-center gap-3">
+          <div class="relative flex-1 w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="web-search-query" value="Thar jeep on an offroad" placeholder="Search web images (e.g., 'offroad jeep', 'mountains', 'cars')..." 
+                   class="w-full bg-[#111827]/90 text-slate-100 placeholder-slate-500 text-sm pl-11 pr-4 py-3 rounded-xl border border-slate-700/80 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition shadow-inner" />
+          </div>
+          <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Search Web Images</span>
+          </button>
+        </form>
+
+        <!-- Category Shortcuts -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <span class="text-slate-400 font-semibold whitespace-nowrap">Categories:</span>
+          <button onclick="quickSearch('Offroad Vehicles')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 whitespace-nowrap border border-slate-700 transition">🏎️ Offroad Vehicles</button>
+          <button onclick="quickSearch('Nature Wilderness')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 whitespace-nowrap border border-slate-700 transition">🌿 Nature</button>
+          <button onclick="quickSearch('Modern Architecture')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 whitespace-nowrap border border-slate-700 transition">🏛️ Architecture</button>
+          <button onclick="quickSearch('Cyberpunk City')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 whitespace-nowrap border border-slate-700 transition">💻 Technology</button>
+          <button onclick="quickSearch('Wildlife Photography')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 whitespace-nowrap border border-slate-700 transition">📷 Photography</button>
+        </div>
+      </div>
+
+      <!-- Engine Status Bar -->
+      <div class="flex items-center justify-between px-1 text-xs text-slate-400">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="web-engine-status">Engine: Smart Web Direct Stream Engine (12 images fetched)</span>
+        </div>
+        <div id="results-count-text">12 results</div>
+      </div>
+
+      <!-- Web Image Grid -->
+      <div id="web-image-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FULLSCREEN LIGHTBOX MODAL -->
+  <div id="lightbox-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl hidden flex-col transition-all duration-300 opacity-0" onclick="closeLightbox()">
+    
+    <!-- Lightbox Header -->
+    <div class="p-4 sm:px-8 flex items-center justify-between border-b border-slate-800/80" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-3">
+        <span id="lb-source-badge" class="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">WEB</span>
+        <h3 id="lb-title" class="text-sm sm:text-base font-bold text-slate-200 truncate max-w-xs sm:max-w-md">Image Preview</h3>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="zoomLightboxImage(-0.2)" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Zoom Out">
+          <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
+        </button>
+        <button onclick="zoomLightboxImage(0.2)" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Zoom In">
+          <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+        </button>
+        <button onclick="resetLightboxZoom()" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Reset Scale">
+          <i class="fa-solid fa-rotate-left text-xs"></i>
+        </button>
+        <button id="lb-fav-btn" onclick="toggleLightboxFav()" class="w-9 h-9 rounded-lg bg-pink-950/40 hover:bg-pink-900/60 text-pink-400 flex items-center justify-center transition" title="Bookmark/Favorite">
+          <i class="fa-regular fa-heart text-xs"></i>
+        </button>
+        <a id="lb-download-btn" download="mediavault-image.jpg" target="_blank" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Download Source">
+          <i class="fa-solid fa-download text-xs"></i>
+        </a>
+        <button onclick="closeLightbox()" class="w-9 h-9 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 flex items-center justify-center transition ml-2" title="Close Lightbox (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Lightbox Main Stage -->
+    <div class="flex-1 relative flex items-center justify-center p-4 sm:p-8 overflow-hidden" onclick="event.stopPropagation()">
+      
+      <!-- Previous Button -->
+      <button onclick="navigateLightbox(-1)" class="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-brand-600 text-white flex items-center justify-center shadow-xl transition-all border border-slate-700/60 z-10">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+
+      <!-- Image Canvas Container -->
+      <div class="relative max-w-full max-h-full flex items-center justify-center overflow-hidden rounded-xl">
+        <img id="lb-image" src="" alt="Lightbox Preview" 
+             class="max-w-full max-h-[75vh] object-contain rounded-xl transition-transform duration-200 ease-out shadow-2xl filter-normal"
+             onerror="handleLightboxImageError(this)" />
+      </div>
+
+      <!-- Next Button -->
+      <button onclick="navigateLightbox(1)" class="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-brand-600 text-white flex items-center justify-center shadow-xl transition-all border border-slate-700/60 z-10">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Lightbox Controls & Filter Bar -->
+    <div class="p-4 border-t border-slate-800/80 glass-card flex flex-wrap items-center justify-between gap-4" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-1.5 text-xs text-slate-400">
+        <span class="font-semibold text-slate-300">Filter:</span>
+        <button onclick="applyLightboxFilter('normal')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Normal</button>
+        <button onclick="applyLightboxFilter('bw')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">B&W</button>
+        <button onclick="applyLightboxFilter('sepia')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Sepia</button>
+        <button onclick="applyLightboxFilter('vivid')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Vivid</button>
+        <button onclick="applyLightboxFilter('invert')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200">Invert</button>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium">
+        <span>Source: </span><span id="lb-source-title" class="text-slate-400">Web Media Hub</span>
+        <span class="mx-2">•</span>
+        <span>Dim: </span><span id="lb-dim-info" class="text-slate-400">Auto</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM DIRECT IMAGE URL MODAL -->
+  <div id="url-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6 rounded-2xl border border-slate-700 flex flex-col gap-4 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-link text-brand-400"></i>
+          <span>Add Custom Web Image URL</span>
+        </h3>
+        <button onclick="closeCustomUrlModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-400">Paste a direct image link (e.g. JPG, PNG, WebP) to insert it directly into your current view.</p>
+      <input type="url" id="custom-url-input" placeholder="https://images.unsplash.com/photo-..." class="w-full bg-[#111827] text-xs text-slate-100 px-3 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-brand-500" />
+      <input type="text" id="custom-title-input" placeholder="Image Title (Optional)" class="w-full bg-[#111827] text-xs text-slate-100 px-3 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-brand-500" />
+      <div class="flex justify-end gap-2 mt-2">
+        <button onclick="closeCustomUrlModal()" class="px-4 py-2 text-xs font-semibold bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700">Cancel</button>
+        <button onclick="submitCustomUrl()" class="px-4 py-2 text-xs font-semibold bg-brand-600 text-white rounded-lg hover:bg-brand-500">Add to Gallery</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global Application State
+    let currentMainTab = 'web'; // 'web' or 'local'
+    let webImages = [];
+    let localImages = [];
+    let favoritesList = JSON.parse(localStorage.getItem('mvp_favorites') || '[]');
+    let showFavoritesOnly = false;
+
+    // Lightbox State
+    let activeGallery = [];
+    let currentLightboxIndex = 0;
+    let currentZoomScale = 1.0;
+
+    // Reliable fallback image generators
+    const FALLBACK_SEEDS = [
+      "https://picsum.photos/800/600?random=101",
+      "https://picsum.photos/800/600?random=102",
+      "https://picsum.photos/800/600?random=103",
+      "https://picsum.photos/800/600?random=104"
+    ];
+
+    window.onload = function() {
+      updateFavoritesCounter();
+      // Execute initial web fetch with default query
+      fetchWebImages("Thar jeep on an offroad");
+    };
+
+    // TAB SWITCHING
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      showFavoritesOnly = false;
+      document.getElementById('btn-favorites-toggle').classList.remove('ring-2', 'ring-pink-500');
+
+      const btnLocal = document.getElementById('btn-tab-local');
+      const btnWeb = document.getElementById('btn-tab-web');
+      const contentLocal = document.getElementById('tab-content-local');
+      const contentWeb = document.getElementById('tab-content-web');
+
+      if (tab === 'local') {
+        btnLocal.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-brand-600 text-white shadow-md shadow-brand-600/30";
+        btnWeb.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white";
+        contentLocal.classList.remove('hidden');
+        contentLocal.classList.add('flex');
+        contentWeb.classList.add('hidden');
+        contentWeb.classList.remove('flex');
+      } else {
+        btnWeb.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-brand-600 text-white shadow-md shadow-brand-600/30";
+        btnLocal.className = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white";
+        contentWeb.classList.remove('hidden');
+        contentWeb.classList.add('flex');
+        contentLocal.classList.add('hidden');
+        contentLocal.classList.remove('flex');
+      }
+    }
+
+    async function fetchWebImages(query) {
+      const grid = document.getElementById('web-image-grid');
+      const statusText = document.getElementById('web-engine-status');
+      const countText = document.getElementById('results-count-text');
+      
+      grid.innerHTML = `
+        <div class="col-span-full py-16 text-center flex flex-col items-center justify-center gap-3">
+          <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-sm text-slate-400">Searching web stream for "<span class="text-slate-200">${query}</span>"...</p>
+        </div>
+      `;
+
+      webImages = [];
+
+      try {
+        // Primary API Strategy: Wikimedia Commons Search (No access keys required)
+        const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=16&prop=imageinfo&iiprop=url|mime&format=json&origin=*`;
+        const response = await fetch(wikiUrl);
+        const data = await response.json();
+
+        if (data.query && data.query.pages) {
+          const pages = Object.values(data.query.pages);
+          pages.forEach((page, idx) => {
+            if (page.imageinfo && page.imageinfo[0] && page.imageinfo[0].url) {
+              const fileUrl = page.imageinfo[0].url;
+              // Filter out SVG or non-standard image types if necessary
+              if (!fileUrl.endsWith('.svg') && !fileUrl.endsWith('.ogg')) {
+                const titleStr = page.title ? page.title.replace('File:', '') : `${query} #${idx + 1}`;
+                webImages.push({
+                  id: 'web_' + page.pageid + '_' + idx,
+                  title: titleStr,
+                  url: fileUrl,
+                  source: 'Wikimedia Stream',
+                  type: 'web'
+                });
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("Wikimedia API stream throttled, using high-reliability fallback engine", err);
+      }
+
+      // If Wikimedia returned few or no images, supplement with generated query streams
+      if (webImages.length < 6) {
+        for (let i = 1; i <= 12; i++) {
+          const cleanQuery = encodeURIComponent(query.toLowerCase());
+          // LoremFlickr / Picsum query stream fallback
+          const fallbackUrl = `https://loremflickr.com/800/600/${cleanQuery}?lock=${i}`;
+          webImages.push({
+            id: `web_fallback_${i}`,
+            title: `${query} - Scene #${i}`,
+            url: fallbackUrl,
+            source: 'Web Media Stream',
+            type: 'web'
+          });
+        }
+      }
+
+      statusText.innerText = `Engine: Smart Web Direct Stream Engine (${webImages.length} images fetched)`;
+      countText.innerText = `${webImages.length} results`;
+      document.getElementById('badge-web-count').innerText = webImages.length;
+
+      renderGrid('web-image-grid', webImages);
+    }
+
+    function handleWebSearchSubmit(e) {
+      e.preventDefault();
+      const query = document.getElementById('web-search-query').value.trim();
+      if (query) {
+        fetchWebImages(query);
+      }
+    }
+
+    function quickSearch(tag) {
+      document.getElementById('web-search-query').value = tag;
+      fetchWebImages(tag);
+    }
+
+    function handleLocalFilesSelected(fileList) {
+      if (!fileList || fileList.length === 0) return;
+
+      const newImages = [];
+      Array.from(fileList).forEach((file, index) => {
+        if (file.type.startsWith('image/')) {
+          const blobUrl = URL.createObjectURL(file);
+          newImages.push({
+            id: 'local_' + Date.now() + '_' + index,
+            title: file.name,
+            url: blobUrl,
+            source: 'Local Computer',
+            size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+            type: 'local'
+          });
+        }
+      });
+
+      if (newImages.length > 0) {
+        localImages = [...newImages, ...localImages];
+        document.getElementById('local-toolbar').classList.remove('hidden');
+        document.getElementById('local-status-text').innerText = `${localImages.length} local images loaded`;
+        document.getElementById('badge-local-count').classList.remove('hidden');
+        document.getElementById('badge-local-count').innerText = localImages.length;
+        
+        renderGrid('local-image-grid', localImages);
+      }
+    }
+
+    function filterLocalImages() {
+      const term = document.getElementById('local-filter-input').value.toLowerCase();
+      const filtered = localImages.filter(img => img.title.toLowerCase().includes(term));
+      renderGrid('local-image-grid', filtered);
+    }
+
+    function renderGrid(containerId, items) {
+      const container = document.getElementById(containerId);
+      
+      if (showFavoritesOnly) {
+        items = items.filter(img => favoritesList.some(f => f.url === img.url));
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400">
+            <i class="fa-solid fa-images text-3xl mb-2 text-slate-600"></i>
+            <p class="text-sm">No images available to display in this view.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map((img, index) => {
+        const isFav = favoritesList.some(f => f.url === img.url);
+        const safeTitle = escapeHtml(img.title);
+        const safeUrl = escapeHtml(img.url);
+
+        return `
+          <div class="glass-card rounded-xl overflow-hidden group flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-500/10 border border-slate-700/60">
+            <!-- Image Frame -->
+            <div class="relative h-48 bg-slate-900 overflow-hidden cursor-pointer" onclick="openLightbox('${containerId}', ${index})">
+              <img src="${safeUrl}" 
+                   alt="${safeTitle}" 
+                   loading="lazy"
+                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                   onerror="handleCardImageError(this, '${containerId}', ${index})" />
+              
+              <!-- Hover Overlay -->
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                <span class="text-xs text-brand-300 font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-expand"></i> View Fullscreen
+                </span>
+              </div>
+
+              <!-- Top Badges -->
+              <div class="absolute top-2.5 left-2.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-slate-900/80 text-slate-200 backdrop-blur-md border border-slate-700/50">
+                  ${img.type === 'local' ? 'Local File' : 'Web Media'}
+                </span>
+              </div>
+
+              <button onclick="event.stopPropagation(); toggleFavorite('${safeUrl}', '${safeTitle}', '${img.type}')" 
+                      class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md text-slate-200 flex items-center justify-center transition border border-slate-700/50"
+                      title="Favorite">
+                <i class="${isFav ? 'fa-solid text-pink-500' : 'fa-regular text-slate-300'} fa-heart text-xs"></i>
+              </button>
+            </div>
+
+            <!-- Card Meta Footer -->
+            <div class="p-3.5 flex flex-col justify-between flex-1 gap-1">
+              <h4 class="text-xs font-bold text-slate-200 truncate" title="${safeTitle}">${safeTitle}</h4>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-circle-info text-[9px] text-brand-400"></i> ${img.source || 'Media Stream'}</span>
+                <span onclick="openLightbox('${containerId}', ${index})" class="text-brand-400 font-medium hover:underline cursor-pointer">View Full</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // AUTOMATIC IMAGE ERROR FALLBACK (Grid Level)
+    function handleCardImageError(imgElement, containerId, index) {
+      // Pick clean placeholder if source link breaks
+      const randomFallback = FALLBACK_SEEDS[index % FALLBACK_SEEDS.length];
+      imgElement.onerror = null; // Prevent infinite loop
+      imgElement.src = randomFallback;
+    }
+
+    function openLightbox(containerId, index) {
+      if (containerId === 'web-image-grid') {
+        activeGallery = webImages;
+      } else if (containerId === 'local-image-grid') {
+        activeGallery = localImages;
+      } else {
+        activeGallery = favoritesList;
+      }
+
+      currentLightboxIndex = index;
+      currentZoomScale = 1.0;
+      updateLightboxView();
+
+      const modal = document.getElementById('lightbox-modal');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+      }, 10);
+
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updateLightboxView() {
+      if (!activeGallery || activeGallery.length === 0) return;
+      const item = activeGallery[currentLightboxIndex];
+      
+      const img = document.getElementById('lb-image');
+      img.style.transform = `scale(${currentZoomScale})`;
+      img.src = item.url;
+
+      document.getElementById('lb-title').innerText = item.title || 'Image Preview';
+      document.getElementById('lb-source-badge').innerText = item.type === 'local' ? 'LOCAL' : 'WEB';
+      document.getElementById('lb-source-title').innerText = item.source || 'MediaVault Stream';
+      document.getElementById('lb-download-btn').href = item.url;
+
+      // Update Favorite Button Status
+      const isFav = favoritesList.some(f => f.url === item.url);
+      const favBtn = document.getElementById('lb-fav-btn');
+      favBtn.innerHTML = `<i class="${isFav ? 'fa-solid text-pink-500' : 'fa-regular text-slate-300'} fa-heart text-xs"></i>`;
+    }
+
+    // AUTOMATIC IMAGE ERROR FALLBACK (Lightbox Level)
+    function handleLightboxImageError(imgElement) {
+      imgElement.onerror = null;
+      imgElement.src = "https://picsum.photos/1200/800?random=88";
+    }
+
+    function navigateLightbox(step) {
+      currentLightboxIndex += step;
+      if (currentLightboxIndex < 0) currentLightboxIndex = activeGallery.length - 1;
+      if (currentLightboxIndex >= activeGallery.length) currentLightboxIndex = 0;
+      currentZoomScale = 1.0;
+      updateLightboxView();
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('lightbox-modal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }, 200);
+    }
+
+    function zoomLightboxImage(delta) {
+      currentZoomScale = Math.max(0.6, Math.min(3.0, currentZoomScale + delta));
+      document.getElementById('lb-image').style.transform = `scale(${currentZoomScale})`;
+    }
+
+    function resetLightboxZoom() {
+      currentZoomScale = 1.0;
+      document.getElementById('lb-image').style.transform = `scale(1.0)`;
+    }
+
+    function applyLightboxFilter(filterName) {
+      const img = document.getElementById('lb-image');
+      img.className = "max-w-full max-h-[75vh] object-contain rounded-xl transition-transform duration-200 ease-out shadow-2xl filter-" + filterName;
+    }
+
+    // FAVORITES & BOOKMARKS MANAGEMENT
+    function toggleFavorite(url, title, type) {
+      const existingIdx = favoritesList.findIndex(f => f.url === url);
+      if (existingIdx > -1) {
+        favoritesList.splice(existingIdx, 1);
+      } else {
+        favoritesList.push({ url, title, type, source: 'Bookmarked' });
+      }
+      localStorage.setItem('mvp_favorites', JSON.stringify(favoritesList));
+      updateFavoritesCounter();
+
+      // Refresh currently open grid
+      if (currentMainTab === 'web') renderGrid('web-image-grid', webImages);
+      else renderGrid('local-image-grid', localImages);
+    }
+
+    function toggleLightboxFav() {
+      const currentItem = activeGallery[currentLightboxIndex];
+      if (currentItem) {
+        toggleFavorite(currentItem.url, currentItem.title, currentItem.type);
+        updateLightboxView();
+      }
+    }
+
+    function updateFavoritesCounter() {
+      document.getElementById('fav-count').innerText = favoritesList.length;
+    }
+
+    function toggleFavoritesView() {
+      showFavoritesOnly = !showFavoritesOnly;
+      const btn = document.getElementById('btn-favorites-toggle');
+      if (showFavoritesOnly) {
+        btn.classList.add('ring-2', 'ring-pink-500');
+      } else {
+        btn.classList.remove('ring-2', 'ring-pink-500');
+      }
+      renderGrid('web-image-grid', webImages);
+      renderGrid('local-image-grid', localImages);
+    }
+
+    // CUSTOM IMAGE URL MODAL
+    function openCustomUrlModal() {
+      document.getElementById('url-modal').classList.remove('hidden');
+      document.getElementById('url-modal').classList.add('flex');
+    }
+
+    function closeCustomUrlModal() {
+      document.getElementById('url-modal').classList.add('hidden');
+      document.getElementById('url-modal').classList.remove('flex');
+    }
+
+    function submitCustomUrl() {
+      const url = document.getElementById('custom-url-input').value.trim();
+      const title = document.getElementById('custom-title-input').value.trim() || 'Custom URL Image';
+
+      if (url) {
+        const customItem = {
+          id: 'custom_' + Date.now(),
+          title: title,
+          url: url,
+          source: 'User Custom Link',
+          type: 'web'
+        };
+        webImages.unshift(customItem);
+        renderGrid('web-image-grid', webImages);
+        closeCustomUrlModal();
+        document.getElementById('custom-url-input').value = '';
+        document.getElementById('custom-title-input').value = '';
+      }
+    }
+
+    // KEYBOARD NAVIGATION
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('lightbox-modal');
+      if (!modal.classList.contains('hidden')) {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') navigateLightbox(-1);
+        if (e.key === 'ArrowRight') navigateLightbox(1);
+      }
+    });
+
+    // UTILITY HELPER
+    function escapeHtml(str) {
+      return (str || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>
+```
+
+I have created the single-file **MediaVault Pro** application containing all HTML, CSS, and JS logic.
+
+### Highlights of the Solution:
+1. **Dual-Tab Media Hub**:
+   - **Tab 1 (Local Computer Files)**: Uses HTML5 file inputs (`webkitdirectory` and `multiple`) to load computer files or whole folders without uploading them to external servers.
+   - **Tab 2 (Web Search & Gallery)**: Integrated with the **Wikimedia Commons Public API** and dynamic stream engines that perform live search queries (such as `'offroad jeep'`).
+2. **Fixed Lightbox Preview & Fallbacks**:
+   - Features full-screen preview with zoom, zoom reset, source metadata, and live **CSS Filter controls** (Normal, B&W, Sepia, Vivid, Invert).
+   - Built-in `onerror` handlers on both the grid cards and the lightbox viewer automatically detect broken URLs or network blocks and substitute them with a clean image stream.
+3. **Favorites & Custom URLs**:
+   - Bookmark button with `localStorage` persistence and quick favorites filter view.
+   - Custom URL Modal to paste direct image links.
