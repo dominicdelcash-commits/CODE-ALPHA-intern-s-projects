@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Precision Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 25px -5px rgba(99, 102, 241, 0.4)',
+                        'glow-emerald': '0 0 25px -5px rgba(16, 185, 129, 0.4)',
+                        'neumorph-dark': '10px 10px 20px #0b0f19, -10px -10px 20px #1b2337',
+                        'neumorph-btn': '5px 5px 10px #0c101c, -5px -5px 10px #1a2238',
+                        'neumorph-btn-active': 'inset 3px 3px 6px #0c101c, inset -3px -3px 6px #1a2238'
+                    },
+                    keyframes: {
+                        pulseKey: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(0.95)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(8px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    },
+                    animation: {
+                        'pulse-key': 'pulseKey 0.15s ease-in-out',
+                        'fade-in': 'fadeIn 0.25s ease-out forwards'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* Glassmorphism effects */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card-light {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Custom scrollbar for history panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+        }
+
+        /* Active key ripple animation class */
+        .key-pressed {
+            transform: scale(0.92) !important;
+            filter: brightness(1.2);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4) !important;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-3 sm:p-6 transition-colors duration-300 dark">
+
+    <div id="calculatorApp" class="w-full max-w-md mx-auto relative group">
+        
+        <!-- Subtle background ambient lighting glow -->
+        <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+
+        <!-- Calculator Main Body Shell -->
+        <div id="mainShell" class="relative glass-card rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 border border-slate-800/80 transition-all duration-300">
+            
+            <!-- Top Action Navigation Bar -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                    <span class="ml-2 text-xs font-semibold tracking-wider uppercase text-slate-400">CalcPro FX</span>
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <!-- Audio Sound Toggle -->
+                    <button id="soundToggleBtn" title="Toggle Sound Feedback" class="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all focus:outline-none">
+                        <i data-lucide="volume-2" class="w-4 h-4"></i>
+                    </button>
+
+                    <!-- Scientific Functions Toggle -->
+                    <button id="scientificToggleBtn" title="Toggle Scientific Mode" class="p-2 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60 transition-all focus:outline-none">
+                        <i data-lucide="binary" class="w-4 h-4"></i>
+                    </button>
+
+                    <!-- History Panel Toggle -->
+                    <button id="historyToggleBtn" title="Toggle History Log" class="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 transition-all focus:outline-none relative">
+                        <i data-lucide="history" class="w-4 h-4"></i>
+                        <span id="historyBadge" class="hidden absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full"></span>
+                    </button>
+
+                    <!-- Theme Selector Toggle -->
+                    <button id="themeToggleBtn" title="Switch Visual Theme" class="p-2 rounded-xl text-slate-400 hover:text-yellow-400 hover:bg-slate-800/60 transition-all focus:outline-none">
+                        <i data-lucide="moon" class="w-4 h-4" id="themeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dual Screen Display Area -->
+            <div class="bg-slate-900/90 rounded-2xl p-4 sm:p-5 flex flex-col justify-between border border-slate-800 shadow-inner h-36 relative overflow-hidden">
+                
+                <!-- Screen Glow Effect -->
+                <div class="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                <!-- Upper Secondary Display: Live Equation & Math Chain -->
+                <div class="flex justify-between items-center text-xs sm:text-sm font-mono text-slate-400 tracking-wide overflow-x-auto whitespace-nowrap scrollbar-none">
+                    <span id="memoryIndicator" class="text-indigo-400 font-semibold opacity-0 transition-opacity">M</span>
+                    <span id="expressionDisplay" class="ml-auto min-h-[1.25rem] transition-all"></span>
+                </div>
+
+                <!-- Lower Primary Display: Main Number Input / Result -->
+                <div class="flex items-baseline justify-end w-full overflow-hidden">
+                    <span id="liveResultPreview" class="text-xs text-slate-500 font-mono mr-2 hidden sm:inline-block"></span>
+                    <span id="primaryDisplay" class="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white transition-all duration-100 truncate text-right">0</span>
+                </div>
+
+                <!-- Copy Clipboard Toast Notification -->
+                <div id="copyToast" class="absolute bottom-2 left-4 text-[10px] bg-indigo-600/90 text-white px-2 py-0.5 rounded-md opacity-0 transition-opacity pointer-events-none flex items-center gap-1">
+                    <i data-lucide="check" class="w-3 h-3"></i> Copied to Clipboard
+                </div>
+            </div>
+
+            <!-- Scientific Panel (Collapsible Grid) -->
+            <div id="scientificPanel" class="hidden grid-cols-5 gap-2 transition-all duration-300">
+                <button data-action="sin" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">sin</button>
+                <button data-action="cos" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">cos</button>
+                <button data-action="tan" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">tan</button>
+                <button data-action="sqrt" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">√x</button>
+                <button data-action="pow" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">x²</button>
+                
+                <button data-action="bracket-open" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">(</button>
+                <button data-action="bracket-close" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">)</button>
+                <button data-action="pi" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">π</button>
+                <button data-action="log" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">log</button>
+                <button data-action="exp" class="sci-btn bg-slate-800/40 hover:bg-indigo-950/50 hover:text-indigo-300 text-slate-300 p-2.5 rounded-xl text-xs font-semibold border border-slate-700/40 transition">e</button>
+            </div>
+
+            <!-- Primary Calculator Keypad Grid -->
+            <div class="grid grid-cols-4 gap-2.5 sm:gap-3" id="keypad">
+                
+                <!-- Row 1: Memory/Clear & High Priority Utility -->
+                <button data-action="clear" class="calc-btn group bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white p-3.5 sm:p-4 rounded-2xl text-base sm:text-lg font-bold border border-rose-500/20 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    <span>AC</span>
+                </button>
+                
+                <button data-action="backspace" class="calc-btn bg-slate-800/80 hover:bg-slate-700 text-slate-300 p-3.5 sm:p-4 rounded-2xl text-base sm:text-lg font-semibold border border-slate-700/50 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    <i data-lucide="delete" class="w-5 h-5"></i>
+                </button>
+
+                <button data-action="percent" class="calc-btn bg-slate-800/80 hover:bg-slate-700 text-slate-300 p-3.5 sm:p-4 rounded-2xl text-base sm:text-lg font-semibold border border-slate-700/50 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    %
+                </button>
+
+                <button data-action="operator" data-val="/" class="calc-btn bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white p-3.5 sm:p-4 rounded-2xl text-xl font-semibold border border-indigo-500/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    ÷
+                </button>
+
+                <!-- Row 2: Digits 7-9 & Multiply -->
+                <button data-action="number" data-val="7" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    7
+                </button>
+                <button data-action="number" data-val="8" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    8
+                </button>
+                <button data-action="number" data-val="9" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    9
+                </button>
+                <button data-action="operator" data-val="*" class="calc-btn bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white p-3.5 sm:p-4 rounded-2xl text-xl font-semibold border border-indigo-500/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    ×
+                </button>
+
+                <!-- Row 3: Digits 4-6 & Subtract -->
+                <button data-action="number" data-val="4" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    4
+                </button>
+                <button data-action="number" data-val="5" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    5
+                </button>
+                <button data-action="number" data-val="6" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    6
+                </button>
+                <button data-action="operator" data-val="-" class="calc-btn bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white p-3.5 sm:p-4 rounded-2xl text-xl font-semibold border border-indigo-500/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    −
+                </button>
+
+                <!-- Row 4: Digits 1-3 & Add -->
+                <button data-action="number" data-val="1" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    1
+                </button>
+                <button data-action="number" data-val="2" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    2
+                </button>
+                <button data-action="number" data-val="3" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    3
+                </button>
+                <button data-action="operator" data-val="+" class="calc-btn bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white p-3.5 sm:p-4 rounded-2xl text-xl font-semibold border border-indigo-500/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    +
+                </button>
+
+                <!-- Row 5: Plus/Minus Toggle, Zero, Decimal & Equals -->
+                <button data-action="toggle-sign" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-slate-300 p-3.5 sm:p-4 rounded-2xl text-lg font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    ±
+                </button>
+                <button data-action="number" data-val="0" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-medium border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95 shadow-sm">
+                    0
+                </button>
+                <button data-action="decimal" class="calc-btn bg-slate-800/50 hover:bg-slate-700/80 text-white p-3.5 sm:p-4 rounded-2xl text-lg sm:text-xl font-bold border border-slate-700/30 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    .
+                </button>
+                <button data-action="equals" class="calc-btn bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white p-3.5 sm:p-4 rounded-2xl text-xl font-bold shadow-glow hover:shadow-indigo-500/50 transition-all duration-150 flex items-center justify-center active:scale-95">
+                    =
+                </button>
+            </div>
+
+            <!-- Footer Keyboard Shortcut Guide -->
+            <div class="mt-1 pt-2 border-t border-slate-800/40 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                <span>Keyboard Enabled</span>
+                <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-400">Esc (Clear) | Enter (=)</span>
+            </div>
+        </div>
+
+        <!-- Sliding History Panel Overlay -->
+        <div id="historyDrawer" class="hidden absolute inset-0 z-20 glass-card rounded-3xl p-5 flex-col justify-between border border-slate-700 shadow-2xl animate-fade-in">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2 text-indigo-400 font-semibold">
+                    <i data-lucide="history" class="w-4 h-4"></i>
+                    <span>Calculation History</span>
+                </div>
+                <button id="closeHistoryBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- History List Scrollable Area -->
+            <div id="historyList" class="my-3 flex-1 overflow-y-auto space-y-2 pr-1">
+                <!-- Dynamic history entries inserted here -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+                <button id="clearHistoryBtn" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 p-2 rounded-xl hover:bg-rose-500/10 transition">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear History
+                </button>
+                <span class="text-[10px] text-slate-500">Tap entry to reuse result</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App State Management
+        class CalculatorEngine {
+            constructor() {
+                this.currentInput = '0';
+                this.expression = '';
+                this.previousResult = null;
+                this.shouldResetInput = false;
+                this.history = JSON.parse(localStorage.getItem('calc_pro_history') || '[]');
+                this.soundEnabled = JSON.parse(localStorage.getItem('calc_pro_sound') ?? 'true');
+                this.theme = localStorage.getItem('calc_pro_theme') || 'dark';
+                this.audioCtx = null;
+                
+                this.initUI();
+                this.initEventListeners();
+                this.initAudio();
+                this.applyTheme(this.theme);
+                this.updateHistoryUI();
+            }
+
+            initUI() {
+                this.primaryDisplay = document.getElementById('primaryDisplay');
+                this.expressionDisplay = document.getElementById('expressionDisplay');
+                this.livePreview = document.getElementById('liveResultPreview');
+                this.historyDrawer = document.getElementById('historyDrawer');
+                this.historyList = document.getElementById('historyList');
+                this.historyBadge = document.getElementById('historyBadge');
+                this.scientificPanel = document.getElementById('scientificPanel');
+                this.copyToast = document.getElementById('copyToast');
+                this.themeIcon = document.getElementById('themeIcon');
+
+                // Initialize Lucide icons
+                lucide.createIcons();
+            }
+
+            initAudio() {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.audioCtx = new AudioContext();
+                    }
+                } catch (e) {
+                    console.log('Web Audio not supported');
+                }
+            }
+
+            playClickSound(freq = 600, type = 'sine') {
+                if (!this.soundEnabled || !this.audioCtx) return;
+                
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+
+                try {
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+                    
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.05, this.audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.08);
+
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx.destination);
+
+                    osc.start();
+                    osc.stop(this.audioCtx.currentTime + 0.08);
+                } catch (err) {
+                    // Ignore audio playback errors
+                }
+            }
+
+            initEventListeners() {
+                // Keypad Click Delegation
+                document.getElementById('keypad').addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+
+                    const action = btn.dataset.action;
+                    const val = btn.dataset.val;
+
+                    this.handleInput(action, val);
+                    this.animateButton(btn);
+                });
+
+                // Scientific Panel Delegation
+                this.scientificPanel.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    this.handleScientific(action);
+                    this.animateButton(btn);
+                });
+
+                // Top Toolbar Actions
+                document.getElementById('soundToggleBtn').addEventListener('click', () => this.toggleSound());
+                document.getElementById('scientificToggleBtn').addEventListener('click', () => this.toggleScientific());
+                document.getElementById('historyToggleBtn').addEventListener('click', () => this.toggleHistory());
+                document.getElementById('closeHistoryBtn').addEventListener('click', () => this.toggleHistory(false));
+                document.getElementById('clearHistoryBtn').addEventListener('click', () => this.clearHistory());
+                document.getElementById('themeToggleBtn').addEventListener('click', () => this.cycleTheme());
+
+                // Copy Screen Content on Click
+                this.primaryDisplay.parentElement.addEventListener('click', () => this.copyToClipboard());
+
+                // Physical Keyboard Input Listener
+                window.addEventListener('keydown', (e) => this.handleKeyboardInput(e));
+            }
+
+            animateButton(btn) {
+                if (!btn) return;
+                btn.classList.add('key-pressed');
+                setTimeout(() => btn.classList.remove('key-pressed'), 120);
+            }
+
+            handleInput(action, value) {
+                this.playClickSound(action === 'equals' ? 800 : 500);
+
+                switch (action) {
+                    case 'number':
+                        this.appendNumber(value);
+                        break;
+                    case 'operator':
+                        this.appendOperator(value);
+                        break;
+                    case 'decimal':
+                        this.appendDecimal();
+                        break;
+                    case 'clear':
+                        this.clearAll();
+                        break;
+                    case 'backspace':
+                        this.handleBackspace();
+                        break;
+                    case 'toggle-sign':
+                        this.toggleSign();
+                        break;
+                    case 'percent':
+                        this.handlePercent();
+                        break;
+                    case 'equals':
+                        this.evaluateResult();
+                        break;
+                }
+
+                this.updateDisplay();
+            }
+
+            appendNumber(numStr) {
+                if (this.currentInput === '0' || this.shouldResetInput) {
+                    this.currentInput = numStr;
+                    this.shouldResetInput = false;
+                } else {
+                    if (this.currentInput.length < 16) {
+                        this.currentInput += numStr;
+                    }
+                }
+                this.calculateLivePreview();
+            }
+
+            appendDecimal() {
+                if (this.shouldResetInput) {
+                    this.currentInput = '0.';
+                    this.shouldResetInput = false;
+                    return;
+                }
+                if (!this.currentInput.includes('.')) {
+                    this.currentInput += '.';
+                }
+            }
+
+            appendOperator(op) {
+                // If expression ends with an operator and input is reset, replace last operator
+                if (this.shouldResetInput && this.expression !== '') {
+                    const lastChar = this.expression.trim().slice(-1);
+                    if (['+', '-', '*', '/'].includes(lastChar)) {
+                        this.expression = this.expression.trim().slice(0, -1) + ' ' + op + ' ';
+                        return;
+                    }
+                }
+
+                this.expression += `${this.currentInput} ${op} `;
+                this.shouldResetInput = true;
+                this.calculateLivePreview();
+            }
+
+            handleBackspace() {
+                if (this.shouldResetInput) return;
+                
+                if (this.currentInput.length > 1) {
+                    this.currentInput = this.currentInput.slice(0, -1);
+                } else {
+                    this.currentInput = '0';
+                }
+                this.calculateLivePreview();
+            }
+
+            toggleSign() {
+                if (this.currentInput === '0') return;
+                if (this.currentInput.startsWith('-')) {
+                    this.currentInput = this.currentInput.substring(1);
+                } else {
+                    this.currentInput = '-' + this.currentInput;
+                }
+                this.calculateLivePreview();
+            }
+
+            handlePercent() {
+                const val = parseFloat(this.currentInput);
+                if (isNaN(val)) return;
+                this.currentInput = (val / 100).toString();
+                this.calculateLivePreview();
+            }
+
+            clearAll() {
+                this.currentInput = '0';
+                this.expression = '';
+                this.previousResult = null;
+                this.shouldResetInput = false;
+                this.livePreview.classList.add('hidden');
+            }
+
+            handleScientific(action) {
+                let val = parseFloat(this.currentInput);
+                if (isNaN(val) && action !== 'pi' && action !== 'exp' && action !== 'bracket-open' && action !== 'bracket-close') return;
+
+                this.playClickSound(650);
+
+                switch (action) {
+                    case 'sin':
+                        this.currentInput = Math.sin(val * Math.PI / 180).toFixed(8).replace(/\.?0+$/, '');
+                        break;
+                    case 'cos':
+                        this.currentInput = Math.cos(val * Math.PI / 180).toFixed(8).replace(/\.?0+$/, '');
+                        break;
+                    case 'tan':
+                        this.currentInput = Math.tan(val * Math.PI / 180).toFixed(8).replace(/\.?0+$/, '');
+                        break;
+                    case 'sqrt':
+                        if (val < 0) {
+                            this.currentInput = 'Error';
+                        } else {
+                            this.currentInput = Math.sqrt(val).toString();
+                        }
+                        break;
+                    case 'pow':
+                        this.currentInput = Math.pow(val, 2).toString();
+                        break;
+                    case 'pi':
+                        this.currentInput = Math.PI.toFixed(8).replace(/\.?0+$/, '');
+                        break;
+                    case 'exp':
+                        this.currentInput = Math.E.toFixed(8).replace(/\.?0+$/, '');
+                        break;
+                    case 'log':
+                        if (val <= 0) {
+                            this.currentInput = 'Error';
+                        } else {
+                            this.currentInput = Math.log10(val).toString();
+                        }
+                        break;
+                    case 'bracket-open':
+                        this.expression += '( ';
+                        break;
+                    case 'bracket-close':
+                        this.expression += `${this.currentInput} ) `;
+                        this.shouldResetInput = true;
+                        break;
+                }
+                this.updateDisplay();
+                this.calculateLivePreview();
+            }
+
+            evaluateResult() {
+                if (this.expression === '' && !this.shouldResetInput) return;
+
+                const fullExpression = this.expression + this.currentInput;
+                const sanitizedExpr = this.cleanExpression(fullExpression);
+
+                try {
+                    const result = this.safeEval(sanitizedExpr);
+                    
+                    if (result === Infinity || result === -Infinity || isNaN(result)) {
+                        this.primaryDisplay.innerText = 'Cannot divide by 0';
+                        this.currentInput = '0';
+                        this.expression = '';
+                        this.shouldResetInput = true;
+                        return;
+                    }
+
+                    // Format result with smart precision fixing floating point bugs like 0.1 + 0.2
+                    const formattedResult = this.formatNumber(result);
+
+                    // Add calculation to history log
+                    this.addHistory(fullExpression, formattedResult);
+
+                    this.expressionDisplay.innerText = `${fullExpression} =`;
+                    this.currentInput = formattedResult.toString();
+                    this.expression = '';
+                    this.shouldResetInput = true;
+                    this.livePreview.classList.add('hidden');
+
+                } catch (e) {
+                    this.primaryDisplay.innerText = 'Error';
+                    this.shouldResetInput = true;
+                }
+            }
+
+            cleanExpression(expr) {
+                // Sanitize symbols to standard arithmetic operators
+                return expr
+                    .replace(/÷/g, '/')
+                    .replace(/×/g, '*')
+                    .replace(/−/g, '-');
+            }
+
+            safeEval(expr) {
+                // Strictly allow safe mathematical expressions only
+                if (/[^0-9\+\-\*\/\.\(\)\s]/g.test(expr)) {
+                    throw new Error('Invalid Character');
+                }
+                // Use Function constructor in safe, isolated context
+                return new Function(`'use strict'; return (${expr})`)();
+            }
+
+            calculateLivePreview() {
+                if (this.expression === '') {
+                    this.livePreview.classList.add('hidden');
+                    return;
+                }
+
+                try {
+                    const fullExpr = this.cleanExpression(this.expression + this.currentInput);
+                    const result = this.safeEval(fullExpr);
+                    if (!isNaN(result) && isFinite(result)) {
+                        this.livePreview.innerText = `= ${this.formatNumber(result)}`;
+                        this.livePreview.classList.remove('hidden');
+                    } else {
+                        this.livePreview.classList.add('hidden');
+                    }
+                } catch (e) {
+                    this.livePreview.classList.add('hidden');
+                }
+            }
+
+            formatNumber(num) {
+                if (typeof num !== 'number') return num;
+                
+                // Fix precision floating point issues e.g. 0.1 + 0.2 = 0.30000000000000004
+                const fixed = parseFloat(num.toFixed(10));
+                
+                // Handle exponential notation for extremely large or small numbers
+                if (Math.abs(fixed) > 999999999999 || (Math.abs(fixed) < 0.000001 && fixed !== 0)) {
+                    return fixed.toExponential(6);
+                }
+                
+                return fixed.toString();
+            }
+
+            updateDisplay() {
+                this.primaryDisplay.innerText = this.formatDisplayString(this.currentInput);
+                this.expressionDisplay.innerText = this.expression;
+
+                // Adjust font size dynamically if number length grows large
+                if (this.currentInput.length > 12) {
+                    this.primaryDisplay.className = "text-xl sm:text-2xl font-mono font-bold tracking-tight text-white transition-all duration-100 truncate text-right";
+                } else if (this.currentInput.length > 8) {
+                    this.primaryDisplay.className = "text-2xl sm:text-3xl font-mono font-bold tracking-tight text-white transition-all duration-100 truncate text-right";
+                } else {
+                    this.primaryDisplay.className = "text-3xl sm:text-4xl font-mono font-bold tracking-tight text-white transition-all duration-100 truncate text-right";
+                }
+            }
+
+            formatDisplayString(str) {
+                if (str === 'Error' || str.includes('e')) return str;
+                
+                const parts = str.split('.');
+                // Add commas to integer part for visual readability
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return parts.join('.');
+            }
+
+            handleKeyboardInput(e) {
+                // Ignore key events if focus is inside an input element (if any added)
+                if (e.target.tagName === 'INPUT') return;
+
+                const key = e.key;
+                
+                // Find matching button on UI to trigger visual keypress animation
+                let targetBtn = null;
+
+                if (!isNaN(key)) {
+                    this.handleInput('number', key);
+                    targetBtn = document.querySelector(`[data-val="${key}"]`);
+                } else if (key === '+') {
+                    this.handleInput('operator', '+');
+                    targetBtn = document.querySelector(`[data-val="+"]`);
+                } else if (key === '-') {
+                    this.handleInput('operator', '-');
+                    targetBtn = document.querySelector(`[data-val="-"]`);
+                } else if (key === '*') {
+                    this.handleInput('operator', '*');
+                    targetBtn = document.querySelector(`[data-val="*"]`);
+                } else if (key === '/') {
+                    e.preventDefault();
+                    this.handleInput('operator', '/');
+                    targetBtn = document.querySelector(`[data-val="/"]`);
+                } else if (key === '.' || key === ',') {
+                    this.handleInput('decimal');
+                    targetBtn = document.querySelector(`[data-action="decimal"]`);
+                } else if (key === 'Enter' || key === '=') {
+                    e.preventDefault();
+                    this.handleInput('equals');
+                    targetBtn = document.querySelector(`[data-action="equals"]`);
+                } else if (key === 'Backspace') {
+                    this.handleInput('backspace');
+                    targetBtn = document.querySelector(`[data-action="backspace"]`);
+                } else if (key === 'Escape' || key.toLowerCase() === 'c') {
+                    this.handleInput('clear');
+                    targetBtn = document.querySelector(`[data-action="clear"]`);
+                } else if (key === '%') {
+                    this.handleInput('percent');
+                    targetBtn = document.querySelector(`[data-action="percent"]`);
+                }
+
+                if (targetBtn) {
+                    this.animateButton(targetBtn);
+                }
+            }
+
+            addHistory(expr, result) {
+                const historyItem = {
+                    id: Date.now(),
+                    expression: expr,
+                    result: result
+                };
+
+                this.history.unshift(historyItem);
+                if (this.history.length > 25) this.history.pop(); // Keep last 25 entries
+
+                localStorage.setItem('calc_pro_history', JSON.stringify(this.history));
+                this.updateHistoryUI();
+            }
+
+            updateHistoryUI() {
+                if (this.history.length > 0) {
+                    this.historyBadge.classList.remove('hidden');
+                } else {
+                    this.historyBadge.classList.add('hidden');
+                }
+
+                if (this.history.length === 0) {
+                    this.historyList.innerHTML = `
+                        <div class="text-center py-12 text-slate-500 text-xs">
+                            <p>No calculation history yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.historyList.innerHTML = this.history.map(item => `
+                    <div data-result="${item.result}" class="history-item p-2.5 rounded-xl bg-slate-800/40 hover:bg-indigo-950/40 border border-slate-700/30 cursor-pointer transition flex flex-col items-end group">
+                        <span class="text-xs text-slate-400 font-mono group-hover:text-indigo-300">${item.expression} =</span>
+                        <span class="text-base font-bold font-mono text-slate-100 group-hover:text-indigo-400">${item.result}</span>
+                    </div>
+                `).join('');
+
+                // Click event on history item to paste back into display
+                this.historyList.querySelectorAll('.history-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        this.currentInput = el.dataset.result;
+                        this.shouldResetInput = true;
+                        this.updateDisplay();
+                        this.toggleHistory(false);
+                    });
+                });
+            }
+
+            clearHistory() {
+                this.history = [];
+                localStorage.removeItem('calc_pro_history');
+                this.updateHistoryUI();
+            }
+
+            toggleHistory(show = null) {
+                const isHidden = this.historyDrawer.classList.contains('hidden');
+                const shouldShow = show !== null ? show : isHidden;
+
+                if (shouldShow) {
+                    this.historyDrawer.classList.remove('hidden');
+                    this.historyDrawer.classList.add('flex');
+                } else {
+                    this.historyDrawer.classList.add('hidden');
+                    this.historyDrawer.classList.remove('flex');
+                }
+            }
+
+            toggleScientific() {
+                const isHidden = this.scientificPanel.classList.contains('hidden');
+                if (isHidden) {
+                    this.scientificPanel.classList.remove('hidden');
+                    this.scientificPanel.classList.add('grid');
+                } else {
+                    this.scientificPanel.classList.add('hidden');
+                    this.scientificPanel.classList.remove('grid');
+                }
+            }
+
+            toggleSound() {
+                this.soundEnabled = !this.soundEnabled;
+                localStorage.setItem('calc_pro_sound', JSON.stringify(this.soundEnabled));
+                
+                const btn = document.getElementById('soundToggleBtn');
+                btn.innerHTML = this.soundEnabled 
+                    ? `<i data-lucide="volume-2" class="w-4 h-4 text-indigo-400"></i>`
+                    : `<i data-lucide="volume-x" class="w-4 h-4 text-slate-500"></i>`;
+                lucide.createIcons();
+            }
+
+            cycleTheme() {
+                const themes = ['dark', 'light', 'cyberpunk'];
+                const currentIndex = themes.indexOf(this.theme);
+                this.theme = themes[(currentIndex + 1) % themes.length];
+                localStorage.setItem('calc_pro_theme', this.theme);
+                this.applyTheme(this.theme);
+            }
+
+            applyTheme(theme) {
+                const body = document.body;
+                const shell = document.getElementById('mainShell');
+
+                if (theme === 'light') {
+                    body.className = "bg-slate-100 text-slate-800 min-h-screen flex items-center justify-center p-3 sm:p-6 transition-colors duration-300";
+                    shell.className = "relative glass-card-light rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-4 border border-slate-200 transition-all duration-300";
+                    this.themeIcon.setAttribute('data-lucide', 'sun');
+                } else if (theme === 'cyberpunk') {
+                    body.className = "bg-zinc-950 text-emerald-400 min-h-screen flex items-center justify-center p-3 sm:p-6 transition-colors duration-300";
+                    shell.className = "relative bg-zinc-900 rounded-3xl p-5 sm:p-6 shadow-glow-emerald flex flex-col gap-4 border border-emerald-500/40 transition-all duration-300";
+                    this.themeIcon.setAttribute('data-lucide', 'zap');
+                } else { // Dark Default
+                    body.className = "bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-3 sm:p-6 transition-colors duration-300";
+                    shell.className = "relative glass-card rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 border border-slate-800/80 transition-all duration-300";
+                    this.themeIcon.setAttribute('data-lucide', 'moon');
+                }
+                lucide.createIcons();
+            }
+
+            copyToClipboard() {
+                const textToCopy = this.currentInput;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy);
+                } else {
+                    // Fallback for iframe restrictions
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = textToCopy;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                }
+
+                // Show Toast Notification
+                this.copyToast.classList.remove('opacity-0');
+                this.copyToast.classList.add('opacity-100');
+
+                setTimeout(() => {
+                    this.copyToast.classList.remove('opacity-100');
+                    this.copyToast.classList.add('opacity-0');
+                }, 1800);
+            }
+        }
+
+        // Initialize Calculator Web Application
+        window.addEventListener('DOMContentLoaded', () => {
+            window.calculatorApp = new CalculatorEngine();
+        });
+    </script>
+</body>
+</html>
